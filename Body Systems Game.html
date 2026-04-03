@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Body Systems Match</title>
+    <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        :root {
+            --bg: #f8fafc;
+            --primary: #4f46e5;
+            --success: #22c55e;
+            --error: #ef4444;
+            --text: #0f172a;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background-color: var(--bg);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            padding: 15px;
+        }
+
+        header { text-align: center; margin-bottom: 15px; position: relative; }
+        h1 { color: var(--primary); font-size: 2rem; }
+        #win-msg { 
+            color: var(--success); 
+            font-weight: bold; 
+            visibility: hidden; 
+            font-size: 1.2rem;
+        }
+
+        .game-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            flex: 1;
+        }
+
+        .column {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-around;
+            height: 100%;
+        }
+
+        .slot-container {
+            display: flex;
+            align-items: center;
+            height: 12%;
+            gap: 10px;
+        }
+
+        .term-label {
+            background: var(--primary);
+            color: white;
+            padding: 10px;
+            border-radius: 10px;
+            width: 150px;
+            font-weight: bold;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .drop-zone {
+            flex: 1;
+            height: 100%;
+            border: 3px dashed #cbd5e1;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .home-slot {
+            height: 12%;
+            display: flex;
+            align-items: center;
+        }
+
+        .description-card {
+            background: white;
+            border: 2px solid #e2e8f0;
+            padding: 10px 15px;
+            border-radius: 12px;
+            cursor: grab;
+            width: 100%;
+            height: 90%;
+            display: flex;
+            align-items: center;
+            font-size: 0.95rem;
+            touch-action: none;
+            user-select: none;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            transition: background 0.2s;
+        }
+
+        .is-correct {
+            background-color: var(--success) !important;
+            color: white;
+            border-color: #15803d !important;
+            pointer-events: none;
+        }
+
+        .is-wrong {
+            background-color: var(--error) !important;
+            color: white;
+            animation: shake 0.4s ease-in-out;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-8px); }
+            75% { transform: translateX(8px); }
+        }
+
+        .footer {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            padding-top: 15px;
+        }
+
+        button {
+            padding: 12px 30px;
+            font-weight: bold;
+            border-radius: 10px;
+            border: none;
+            cursor: pointer;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Body Systems Match</h1>
+        <div id="win-msg">Great Job! Everything is matched!</div>
+    </header>
+
+    <div class="game-grid">
+        <div class="column" id="left-col"></div>
+        <div class="column" id="right-col"></div>
+    </div>
+
+    <div class="footer">
+        <button onclick="revealAll()" style="background: #334155;">Reveal Answers</button>
+        <button onclick="initGame()" style="background: #94a3b8;">Reset Game</button>
+    </div>
+
+    <script>
+        const bodySystems = [
+            { id: 1, name: "Circulatory", info: "Moves blood with the heart." },
+            { id: 2, name: "Respiratory", info: "Uses lungs to bring in oxygen." },
+            { id: 3, name: "Nervous", info: "Controls body with brain & nerves." },
+            { id: 4, name: "Digestive", info: "Breaks down food in stomach / intestines." },
+            { id: 5, name: "Skeletal", info: "Protects organs & supports body with bones." },
+            { id: 6, name: "Muscular", info: "Helps the body move with muscles." },
+            { id: 7, name: "Excretory", info: "Removes waste using kidneys / bladder." }
+        ];
+
+        let correctCount = 0;
+
+        function initGame() {
+            correctCount = 0;
+            document.getElementById('win-msg').style.visibility = 'hidden';
+            const leftCol = document.getElementById('left-col');
+            const rightCol = document.getElementById('right-col');
+            leftCol.innerHTML = '';
+            rightCol.innerHTML = '';
+
+            bodySystems.forEach(sys => {
+                const container = document.createElement('div');
+                container.className = 'slot-container';
+                container.innerHTML = `<div class="term-label">${sys.name}</div><div class="drop-zone" data-id="${sys.id}"></div>`;
+                leftCol.appendChild(container);
+            });
+
+            // Shuffle answers so they aren't across from the match
+            [...bodySystems].sort(() => Math.random() - 0.5).forEach(sys => {
+                const home = document.createElement('div');
+                home.className = 'home-slot';
+                home.id = `home-${sys.id}`;
+                const card = document.createElement('div');
+                card.className = 'description-card';
+                card.id = `card-${sys.id}`;
+                card.setAttribute('data-id', sys.id);
+                card.innerText = sys.info;
+                home.appendChild(card);
+                rightCol.appendChild(home);
+            });
+
+            setupDragging();
+        }
+
+        function setupDragging() {
+            interact('.description-card').draggable({
+                listeners: {
+                    move(event) {
+                        const { target } = event;
+                        const x = (parseFloat(target.getAttribute('data-x')) || 0) + event.dx;
+                        const y = (parseFloat(target.getAttribute('data-y')) || 0) + event.dy;
+                        target.style.transform = `translate(${x}px, ${y}px)`;
+                        target.setAttribute('data-x', x);
+                        target.setAttribute('data-y', y);
+                    }
+                }
+            });
+
+            interact('.drop-zone').dropzone({
+                accept: '.description-card',
+                ondrop: function (event) {
+                    const card = event.relatedTarget;
+                    const zone = event.target;
+                    const cardId = card.getAttribute('data-id');
+
+                    if (cardId === zone.getAttribute('data-id')) {
+                        zone.appendChild(card);
+                        card.style.transform = 'none';
+                        card.setAttribute('data-x', 0);
+                        card.setAttribute('data-y', 0);
+                        card.classList.add('is-correct');
+                        correctCount++;
+                        if (correctCount === bodySystems.length) triggerWin();
+                    } else {
+                        card.classList.add('is-wrong');
+                        setTimeout(() => {
+                            card.classList.remove('is-wrong');
+                            document.getElementById(`home-${cardId}`).appendChild(card);
+                            card.style.transform = 'none';
+                            card.setAttribute('data-x', 0);
+                            card.setAttribute('data-y', 0);
+                        }, 500);
+                    }
+                }
+            });
+        }
+
+        function triggerWin() {
+            document.getElementById('win-msg').style.visibility = 'visible';
+            confetti({
+                particleCount: 150,
+                spread: 70,
+                origin: { y: 0.6 }
+            });
+        }
+
+        function revealAll() {
+            bodySystems.forEach(sys => {
+                const zone = document.querySelector(`.drop-zone[data-id="${sys.id}"]`);
+                const card = document.getElementById(`card-${sys.id}`);
+                zone.appendChild(card);
+                card.style.transform = 'none';
+                card.classList.add('is-correct');
+            });
+            correctCount = bodySystems.length;
+            triggerWin();
+        }
+
+        initGame();
+    </script>
+</body>
+</html>
